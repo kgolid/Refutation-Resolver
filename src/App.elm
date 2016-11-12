@@ -8,8 +8,10 @@ import List exposing (append, map, concat)
 
 
 type alias Model =
-    { nand_container : ClauseList
-    , or_container : ClauseList
+    { nands : List String
+    , ors : List String
+    , current_nand : String
+    , current_or : String
     }
 
 
@@ -18,13 +20,9 @@ type ClauseType
     | Or
 
 
-type alias ClauseList =
-    { values : List String, current : String, selected_values : List String }
-
-
 type Msg
-    = AddToList Clause
-    | AddToCurrent Clause String
+    = AddToList ClauseType
+    | AddToCurrent ClauseType String
 
 
 subscriptions : Model -> Sub Msg
@@ -44,7 +42,7 @@ update msg model =
                     Nand ->
                         ( if model.current_nand /= "" then
                             { model
-                                | nand_container = model.current_nand :: model.nands
+                                | nands = model.current_nand :: model.nands
                                 , current_nand = ""
                             }
                           else
@@ -66,24 +64,18 @@ update msg model =
             AddToCurrent clause name ->
                 case clause of
                     Nand ->
-                        ( { model | nand_container.current = name }, Cmd.none )
+                        ( { model | current_nand = name }, Cmd.none )
 
                     Or ->
-                        ( { model | or_container.current = name }, Cmd.none )
+                        ( { model | current_or = name }, Cmd.none )
 
 
 init : ( Model, Cmd a )
 init =
-    ( { nand_container =
-            { values = []
-            , selected_values = []
-            , current = ""
-            }
-      , or_container =
-            { values = []
-            , selected_values = []
-            , current = ""
-            }
+    ( { nands = []
+      , ors = []
+      , current_nand = ""
+      , current_or = ""
       }
     , Cmd.none
     )
@@ -119,17 +111,17 @@ get_list : Model -> ClauseType -> List String
 get_list model clause =
     case clause of
         Nand ->
-            model.nand_container.values
+            model.nands
 
         Or ->
-            model.or_container.values
+            model.ors
 
 
 get_current : Model -> ClauseType -> String
 get_current model clause =
     case clause of
-        NandClause ->
-            model.nand_container.current
+        Nand ->
+            model.current_nand
 
-        OrClause ->
-            model.or_container.current
+        Or ->
+            model.current_or
