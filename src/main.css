@@ -1,0 +1,46 @@
+* {
+  margin: 0; padding: 0;
+}
+
+body {
+  margin: 0;
+  background-color: #345;
+  color: #fff;
+  font-family: sans-serif;
+  font-weight:100;
+  text-align: center;
+}
+
+.clause_list {
+  vertical-align: top;
+  display: inline-block;
+  margin:20px;
+  padding:20px;
+  background-color: #e55;
+  width:300px;
+  height:300px;
+}
+
+input, button {
+  border:none;
+  padding:5px;
+  margin:5px;
+}
+
+h1 {
+  padding:20px;
+}
+
+.clause_list div {
+  padding: 5px;
+  margin: 10px;
+  background-color: #c44;
+}
+
+.clause_list div p {
+  margin:5px;
+  padding:5px;
+  background-color: #def;
+  color: #345;
+  display: inline-block;
+}
