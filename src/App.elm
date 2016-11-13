@@ -4,25 +4,41 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Debug exposing (log)
-import List exposing (append, map, concat)
+import List exposing (append, map, concat, any, sort)
+import String exposing (contains, filter, toUpper, toList, fromList)
+import Set exposing (member, insert, empty)
+import Json.Decode as Json
 
 
 type alias Model =
-    { nands : List String
-    , ors : List String
-    , current_nand : String
-    , current_or : String
+    { nands : List Clause
+    , ors : List Clause
+    , current : String
+    }
+
+
+type alias Clause =
+    { term : String
+    , ctype : ClauseType
+    , status : ClauseStatus
     }
 
 
 type ClauseType
-    = Nand
-    | Or
+    = OR
+    | NAND
+
+
+type ClauseStatus
+    = Selected
+    | Selectable
+    | Unselectable
 
 
 type Msg
-    = AddToList ClauseType
-    | AddToCurrent ClauseType String
+    = KeyDown Int
+    | InputChanged String
+    | ClauseSelected ClauseType String
 
 
 subscriptions : Model -> Sub Msg
@@ -32,96 +48,118 @@ subscriptions model =
 
 update : Msg -> Model -> ( Model, Cmd a )
 update msg model =
-    let
-        mod =
-            log "model" model
-    in
-        case msg of
-            AddToList clause ->
-                case clause of
-                    Nand ->
-                        ( if model.current_nand /= "" then
-                            { model
-                                | nands = model.current_nand :: model.nands
-                                , current_nand = ""
-                            }
-                          else
-                            model
+    case msg of
+        ClauseSelected t n ->
+            ( model, Cmd.none )
+
+        InputChanged name ->
+            ( { model | current = toUpper name }, Cmd.none )
+
+        KeyDown code ->
+            if (code == 13) then
+                if contains "@" model.current then
+                    let
+                        term =
+                            filter (\s -> s /= '@') model.current
+                    in
+                        ( { model
+                            | ors = add_clause_to_list term OR model.ors
+                            , current = ""
+                          }
                         , Cmd.none
                         )
-
-                    Or ->
-                        ( if model.current_or /= "" then
-                            { model
-                                | ors = model.current_or :: model.ors
-                                , current_or = ""
-                            }
-                          else
-                            model
-                        , Cmd.none
-                        )
-
-            AddToCurrent clause name ->
-                case clause of
-                    Nand ->
-                        ( { model | current_nand = name }, Cmd.none )
-
-                    Or ->
-                        ( { model | current_or = name }, Cmd.none )
+                else
+                    ( { model
+                        | nands = add_clause_to_list model.current NAND model.nands
+                        , current = ""
+                      }
+                    , Cmd.none
+                    )
+            else
+                ( model, Cmd.none )
 
 
 init : ( Model, Cmd a )
 init =
     ( { nands = []
       , ors = []
-      , current_nand = ""
-      , current_or = ""
+      , current = ""
       }
     , Cmd.none
     )
 
 
+new_clause : String -> ClauseType -> Clause
+new_clause s t =
+    { term = s
+    , ctype = t
+    , status = Selectable
+    }
+
+
+add_clause_to_list : String -> ClauseType -> List Clause -> List Clause
+add_clause_to_list s t list =
+    let
+        term =
+            (fromList << sort << dropDuplicates << toList) s
+    in
+        if contains_clause term list then
+            list
+        else
+            (new_clause term t) :: list
+
+
+contains_clause : String -> List Clause -> Bool
+contains_clause s list =
+    any (\c -> c.term == s) list
+
+
 view : Model -> Html Msg
 view model =
-    div []
+    section []
         [ h1 [] [ text "Axioms" ]
-        , display_list_component model "NAND-clauses" Nand
-        , display_list_component model "OR-clauses" Or
+        , div
+            []
+            [ input
+                [ onInput InputChanged
+                , onKeyDown KeyDown
+                , placeholder "Enter axioms here"
+                , value model.current
+                ]
+                []
+            ]
+        , div
+            []
+            [ display_list_component model.nands "NAND-clauses" "nand-clauses"
+            , display_list_component model.ors "OR-clauses" "or-clauses"
+            ]
         ]
 
 
-display_list_component : Model -> String -> ClauseType -> Html Msg
-display_list_component model title clause =
+onKeyDown : (Int -> a) -> Attribute a
+onKeyDown tagger =
+    on "keydown" (Json.map tagger keyCode)
+
+
+display_list_component : List Clause -> String -> String -> Html Msg
+display_list_component list title class_name =
+    div [ class ("clause_list " ++ class_name) ]
+        [ p [] [ text title ]
+        , div [] (map (\c -> p [ class (toString c.status) ] [ text c.term ]) list)
+        ]
+
+
+
+-- UTILS
+
+
+dropDuplicates : List comparable -> List comparable
+dropDuplicates list =
     let
-        list =
-            get_list model clause
-
-        current =
-            get_current model clause
+        step next ( set, acc ) =
+            if Set.member next set then
+                ( set, acc )
+            else
+                ( Set.insert next set, next :: acc )
     in
-        div [ class "clause_list" ]
-            [ p [] [ text title ]
-            , input [ onInput (AddToCurrent clause), placeholder (toString clause), value current ] []
-            , button [ onClick (AddToList clause) ] [ text "Add clause" ]
-            , div [] (map (\n -> p [] [ text n ]) list)
-            ]
-
-
-get_list : Model -> ClauseType -> List String
-get_list model clause =
-    case clause of
-        Nand ->
-            model.nands
-
-        Or ->
-            model.ors
-
-
-get_current : Model -> ClauseType -> String
-get_current model clause =
-    case clause of
-        Nand ->
-            model.current_nand
-
-        Or ->
-            model.current_or
+        List.foldl step ( Set.empty, [] ) list |> snd |> List.reverse
