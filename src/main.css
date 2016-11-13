@@ -1,11 +1,9 @@
 * {
-  margin: 0; padding: 0;
+  margin: 0; padding: 0; font-family: 'Open Sans'
 }
 
 body {
-  margin: 0;
-  background-color: #345;
-  color: #fff;
+  background-color: #e0e0e0;
   font-family: sans-serif;
   font-weight:100;
   text-align: center;
@@ -14,33 +12,44 @@ body {
 .clause_list {
   vertical-align: top;
   display: inline-block;
-  margin:20px;
+  margin:10px;
   padding:20px;
-  background-color: #e55;
   width:300px;
-  height:300px;
 }
 
-input, button {
+.nand-clauses {
+  text-align: right;
+}
+.or-clauses {
+  text-align: left;
+}
+
+input {
   border:none;
-  padding:5px;
+  padding:10px;
   margin:5px;
+  width:200px;
+  font-size: 14pt;
+  text-align: center;
 }
 
 h1 {
+  text-transform: uppercase;
+  font-size:20pt;
   padding:20px;
-}
-
-.clause_list div {
-  padding: 5px;
-  margin: 10px;
-  background-color: #c44;
 }
 
 .clause_list div p {
   margin:5px;
-  padding:5px;
-  background-color: #def;
-  color: #345;
+  padding:10px 12px;
   display: inline-block;
+  color:#fff;
+}
+
+.clause_list.nand-clauses div p {
+  background-color: #f55;
+}
+
+.clause_list.or-clauses div p {
+  background-color: #5aa;
 }
