@@ -1,5 +1,5 @@
 * {
-  margin: 0; padding: 0; font-family: 'Open Sans'
+  margin: 0; padding: 0; font-family: 'Open Sans';
 }
 
 body {
@@ -9,47 +9,53 @@ body {
   text-align: center;
 }
 
+.main_section {
+  margin:50px;
+}
+
 .clause_list {
   vertical-align: top;
   display: inline-block;
   margin:10px;
-  padding:20px;
   width:300px;
 }
 
-.nand-clauses {
+.nand_clauses {
   text-align: right;
+  color:#f55;
 }
-.or-clauses {
+.or_clauses {
   text-align: left;
+  color:#5aa;
 }
 
 input {
   border:none;
-  padding:10px;
+  padding:15px;
   margin:5px;
   width:200px;
-  font-size: 14pt;
+  font-size: 12pt;
   text-align: center;
 }
 
-h1 {
-  text-transform: uppercase;
-  font-size:20pt;
-  padding:20px;
+input:focus {
+  outline: none;
 }
 
 .clause_list div p {
-  margin:5px;
-  padding:10px 12px;
+  margin:2px;
+  padding:10px 15px;
   display: inline-block;
   color:#fff;
+  font-size: 9pt;
+  font-weight: 300;
 }
 
-.clause_list.nand-clauses div p {
+.clause_list.nand_clauses div p {
   background-color: #f55;
+  text-decoration: overline;
 }
 
-.clause_list.or-clauses div p {
+.clause_list.or_clauses div p {
   background-color: #5aa;
 }

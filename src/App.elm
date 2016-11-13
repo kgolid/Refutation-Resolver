@@ -116,9 +116,8 @@ contains_clause s list =
 
 view : Model -> Html Msg
 view model =
-    section []
-        [ h1 [] [ text "Axioms" ]
-        , div
+    section [ class "main_section" ]
+        [ div
             []
             [ input
                 [ onInput InputChanged
@@ -130,8 +129,8 @@ view model =
             ]
         , div
             []
-            [ display_list_component model.nands "NAND-clauses" "nand-clauses"
-            , display_list_component model.ors "OR-clauses" "or-clauses"
+            [ display_list_component model.nands "NANDs" "nand_clauses"
+            , display_list_component model.ors "ORs" "or_clauses"
             ]
         ]
 
@@ -144,7 +143,7 @@ onKeyDown tagger =
 display_list_component : List Clause -> String -> String -> Html Msg
 display_list_component list title class_name =
     div [ class ("clause_list " ++ class_name) ]
-        [ p [] [ text title ]
+        [ h3 [] [ text title ]
         , div [] (map (\c -> p [ class (toString c.status) ] [ text c.term ]) list)
         ]
 
