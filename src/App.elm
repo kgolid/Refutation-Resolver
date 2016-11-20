@@ -1,12 +1,14 @@
 module App exposing (..)
 
+import Refutation exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Debug exposing (log)
-import List exposing (append, map, concat, any, sort)
+import List exposing (append, map, filter, concat, any, sort, head)
 import String exposing (contains, filter, toUpper, toList, fromList)
 import Set exposing (member, insert, empty)
+import Maybe exposing (withDefault)
 import Json.Decode as Json
 
 
@@ -14,6 +16,7 @@ type alias Model =
     { nands : List Clause
     , ors : List Clause
     , current : String
+    , generated : String
     }
 
 
@@ -38,7 +41,8 @@ type ClauseStatus
 type Msg
     = KeyDown Int
     | InputChanged String
-    | ClauseSelected ClauseType String
+    | ClauseClicked ClauseType String
+    | ResolverClicked
 
 
 subscriptions : Model -> Sub Msg
@@ -49,8 +53,28 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd a )
 update msg model =
     case msg of
-        ClauseSelected t n ->
-            ( model, Cmd.none )
+        ResolverClicked ->
+            let
+                nand_clauses =
+                    map (\n -> n.term) (getSelectedNANDs model)
+
+                maybe_or_clause =
+                    getSelectedOr model
+            in
+                case maybe_or_clause of
+                    Nothing ->
+                        ( model, Cmd.none )
+
+                    Just or_clause ->
+                        ( { model | generated = Refutation.step nand_clauses or_clause.term }, Cmd.none )
+
+        ClauseClicked ctype term ->
+            case ctype of
+                NAND ->
+                    ( { model | nands = changeStatus model.nands term }, Cmd.none )
+
+                OR ->
+                    ( { model | ors = changeStatus model.ors term }, Cmd.none )
 
         InputChanged name ->
             ( { model | current = toUpper name }, Cmd.none )
@@ -60,7 +84,7 @@ update msg model =
                 if contains "@" model.current then
                     let
                         term =
-                            filter (\s -> s /= '@') model.current
+                            String.filter (\s -> s /= '@') model.current
                     in
                         ( { model
                             | ors = add_clause_to_list term OR model.ors
@@ -84,6 +108,7 @@ init =
     ( { nands = []
       , ors = []
       , current = ""
+      , generated = ""
       }
     , Cmd.none
     )
@@ -132,6 +157,11 @@ view model =
             [ display_list_component model.nands "NANDs" "nand_clauses"
             , display_list_component model.ors "ORs" "or_clauses"
             ]
+        , div
+            []
+            [ button [ onClick ResolverClicked ] [ text "Resolve!" ]
+            , p [] [ text model.generated ]
+            ]
         ]
 
 
@@ -144,12 +174,58 @@ display_list_component : List Clause -> String -> String -> Html Msg
 display_list_component list title class_name =
     div [ class ("clause_list " ++ class_name) ]
         [ h3 [] [ text title ]
-        , div [] (map (\c -> p [ class (toString c.status) ] [ text c.term ]) list)
+        , div [] (map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class (toString c.status) ] [ text c.term ]) list)
         ]
 
 
 
 -- UTILS
+
+
+getSelectedNANDs : Model -> List Clause
+getSelectedNANDs model =
+    List.filter (\n -> n.status == Selected) model.nands
+
+
+getSelectedOr : Model -> Maybe Clause
+getSelectedOr model =
+    head (List.filter (\o -> o.status == Selected) model.ors)
+
+
+getClauseList : Model -> ClauseType -> List Clause
+getClauseList model ctype =
+    case ctype of
+        OR ->
+            model.ors
+
+        NAND ->
+            model.nands
+
+
+changeStatus : List Clause -> String -> List Clause
+changeStatus list t =
+    case list of
+        [] ->
+            []
+
+        x :: xs ->
+            if (x.term == t) then
+                { x | status = statusChangeOnClick x.status } :: xs
+            else
+                x :: (changeStatus xs t)
+
+
+statusChangeOnClick : ClauseStatus -> ClauseStatus
+statusChangeOnClick status =
+    case status of
+        Unselectable ->
+            Unselectable
+
+        Selectable ->
+            Selected
+
+        Selected ->
+            Selectable
 
 
 dropDuplicates : List comparable -> List comparable
