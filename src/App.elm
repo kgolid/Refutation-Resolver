@@ -4,9 +4,8 @@ import Refutation exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Debug exposing (log)
 import List exposing (append, map, filter, concat, any, sort, head)
-import String exposing (contains, filter, toUpper, toList, fromList)
+import String exposing (contains, toUpper, toList, fromList)
 import Set exposing (member, insert, empty)
 import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
@@ -41,9 +40,19 @@ type ClauseStatus
 type Msg
     = KeyDown Int
     | InputChanged String
-    | ClauseClicked ClauseType String
-    | ResolverClicked
+    | ClauseClicked Clause
     | GeneratedClicked
+
+
+init : ( Model, Cmd a )
+init =
+    ( { nands = []
+      , ors = []
+      , current = ""
+      , generated = Nothing
+      }
+    , Cmd.none
+    )
 
 
 subscriptions : Model -> Sub Msg
@@ -60,69 +69,56 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just generated ->
-                    ( { model | nands = add_clause_to_list generated NAND model.nands }
-                    , Cmd.none
-                    )
+                    model |> add_clause_to_list generated NAND |> unselectAllClauses |> updateGenerated |> addCmd
 
-        ResolverClicked ->
-            let
-                nand_clauses =
-                    List.map (\n -> n.term) (getSelectedNANDs model)
-
-                maybe_or_clause =
-                    getSelectedOr model
-            in
-                case maybe_or_clause of
-                    Nothing ->
-                        ( { model | generated = Nothing }, Cmd.none )
-
-                    Just or_clause ->
-                        ( { model | generated = Refutation.step nand_clauses or_clause.term }, Cmd.none )
-
-        ClauseClicked ctype term ->
-            case ctype of
+        ClauseClicked clause ->
+            case clause.ctype of
                 NAND ->
-                    { model | nands = changeNANDStatus model.nands term } |> update ResolverClicked
+                    model |> changeNANDStatus clause.term |> updateGenerated |> addCmd
 
                 OR ->
-                    { model | ors = changeORStatus model.ors term } |> update ResolverClicked
+                    model |> changeORStatus clause.term |> updateGenerated |> addCmd
 
         InputChanged name ->
-            ( { model | current = toUpper name }, Cmd.none )
+            { model | current = toUpper name } |> addCmd
 
         KeyDown code ->
-            if (code == 13) then
-                if contains "@" model.current then
-                    let
-                        term =
-                            String.filter (\s -> s /= '@') model.current
-                    in
-                        ( { model
-                            | ors = add_clause_to_list term OR model.ors
-                            , current = ""
-                          }
-                        , Cmd.none
-                        )
-                else
-                    ( { model
-                        | nands = add_clause_to_list model.current NAND model.nands
-                        , current = ""
-                      }
-                    , Cmd.none
-                    )
-            else
+            if (code /= 13) then
                 ( model, Cmd.none )
+            else if contains "\\" model.current then
+                let
+                    term =
+                        String.filter ((/=) '\\') model.current
+                in
+                    model |> add_clause_to_list term OR |> clearCurrent |> addCmd
+            else
+                model |> add_clause_to_list model.current NAND |> clearCurrent |> addCmd
 
 
-init : ( Model, Cmd a )
-init =
-    ( { nands = []
-      , ors = []
-      , current = ""
-      , generated = Nothing
-      }
-    , Cmd.none
-    )
+
+-- Model Manipulations
+
+
+add_clause_to_list : String -> ClauseType -> Model -> Model
+add_clause_to_list s t model =
+    let
+        term =
+            (fromList << sort << dropDuplicates << toList) s
+
+        list =
+            ite (t == NAND) model.nands model.ors
+    in
+        if contains_clause term list then
+            model
+        else if t == NAND then
+            { model | nands = list ++ [ (new_clause term t) ] }
+        else
+            { model | ors = list ++ [ (new_clause term t) ] }
+
+
+contains_clause : String -> List Clause -> Bool
+contains_clause s list =
+    any (\c -> c.term == s) list
 
 
 new_clause : String -> ClauseType -> Clause
@@ -133,21 +129,77 @@ new_clause s t =
     }
 
 
-add_clause_to_list : String -> ClauseType -> List Clause -> List Clause
-add_clause_to_list s t list =
+unselectAllClauses : Model -> Model
+unselectAllClauses model =
+    { model
+        | nands = List.map (\c -> { c | status = Selectable }) model.nands
+        , ors = List.map (\c -> { c | status = Selectable }) model.ors
+    }
+
+
+clearCurrent : Model -> Model
+clearCurrent model =
+    { model | current = "" }
+
+
+updateGenerated : Model -> Model
+updateGenerated model =
     let
-        term =
-            (fromList << sort << dropDuplicates << toList) s
+        maybe_or_clause =
+            getSelectedOR model
     in
-        if contains_clause term list then
-            list
-        else
-            list ++ [ (new_clause term t) ]
+        case maybe_or_clause of
+            Nothing ->
+                { model | generated = Nothing }
+
+            Just or_clause ->
+                let
+                    nand_clauses =
+                        List.map .term (getSelectedNANDs model)
+                in
+                    { model | generated = Refutation.step nand_clauses or_clause.term }
 
 
-contains_clause : String -> List Clause -> Bool
-contains_clause s list =
-    any (\c -> c.term == s) list
+getSelectedNANDs : Model -> List Clause
+getSelectedNANDs model =
+    filter (\n -> n.status == Selected) model.nands
+
+
+getSelectedOR : Model -> Maybe Clause
+getSelectedOR model =
+    head (filter (\o -> o.status == Selected) model.ors)
+
+
+changeNANDStatus : String -> Model -> Model
+changeNANDStatus t model =
+    let
+        updated =
+            List.map (\n -> ite (n.term == t) (toggleStatus n) n) model.nands
+    in
+        { model | nands = updated }
+
+
+changeORStatus : String -> Model -> Model
+changeORStatus t model =
+    let
+        updated =
+            List.map (\n -> ite (n.term == t) (toggleStatus n) { n | status = Selectable }) model.ors
+    in
+        { model | ors = updated }
+
+
+toggleStatus : Clause -> Clause
+toggleStatus clause =
+    case clause.status of
+        Selectable ->
+            { clause | status = Selected }
+
+        Selected ->
+            { clause | status = Selectable }
+
+
+
+-- View
 
 
 view : Model -> Html Msg
@@ -185,20 +237,16 @@ display_result_components list maybe_term =
             []
 
         Just term ->
-            let
-                class_name =
-                    if contains_clause term list then
-                        "clause"
-                    else
-                        "new_clause clause"
-            in
-                [ p [ onClick (GeneratedClicked), class class_name ] [ text (display_term term) ] ]
+            if contains_clause term list then
+                [ p [ class "clause" ] [ text (display_term term) ] ]
+            else
+                [ p [ onClick (GeneratedClicked), class "new_clause clause" ] [ text (display_term term) ] ]
 
 
 display_list_component : List Clause -> String -> Html Msg
 display_list_component list class_name =
     div [ class ("clause_list " ++ class_name) ]
-        (List.map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class ("clause " ++ (toString c.status)) ] [ text (display_term c.term) ]) list)
+        (List.map (\c -> p [ onClick (ClauseClicked c), class ("clause " ++ (toString c.status)) ] [ text (display_term c.term) ]) list)
 
 
 display_term : String -> String
@@ -213,64 +261,6 @@ display_term term =
 -- UTILS
 
 
-getSelectedNANDs : Model -> List Clause
-getSelectedNANDs model =
-    List.filter (\n -> n.status == Selected) model.nands
-
-
-getSelectedOr : Model -> Maybe Clause
-getSelectedOr model =
-    head (List.filter (\o -> o.status == Selected) model.ors)
-
-
-getClauseList : Model -> ClauseType -> List Clause
-getClauseList model ctype =
-    case ctype of
-        OR ->
-            model.ors
-
-        NAND ->
-            model.nands
-
-
-changeNANDStatus : List Clause -> String -> List Clause
-changeNANDStatus list t =
-    case list of
-        [] ->
-            []
-
-        x :: xs ->
-            if (x.term == t) then
-                { x | status = statusChangeOnClick x.status } :: xs
-            else
-                x :: (changeNANDStatus xs t)
-
-
-changeORStatus : List Clause -> String -> List Clause
-changeORStatus list t =
-    case list of
-        [] ->
-            []
-
-        x :: xs ->
-            if (x.term == t) then
-                { x | status = statusChangeOnClick x.status } :: (changeORStatus xs t)
-            else if (x.status == Selected) then
-                { x | status = Selectable } :: (changeORStatus xs t)
-            else
-                x :: (changeORStatus xs t)
-
-
-statusChangeOnClick : ClauseStatus -> ClauseStatus
-statusChangeOnClick status =
-    case status of
-        Selectable ->
-            Selected
-
-        Selected ->
-            Selectable
-
-
 dropDuplicates : List comparable -> List comparable
 dropDuplicates list =
     let
@@ -281,3 +271,16 @@ dropDuplicates list =
                 ( Set.insert next set, next :: acc )
     in
         List.foldl step ( Set.empty, [] ) list |> second |> List.reverse
+
+
+ite : Bool -> a -> a -> a
+ite b x y =
+    if b then
+        x
+    else
+        y
+
+
+addCmd : a -> ( a, Cmd b )
+addCmd x =
+    ( x, Cmd.none )

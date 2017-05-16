@@ -8530,6 +8530,13 @@ var _user$project$Refutation$step = F2(
 		}
 	});
 
+var _user$project$App$addCmd = function (x) {
+	return {ctor: '_Tuple2', _0: x, _1: _elm_lang$core$Platform_Cmd$none};
+};
+var _user$project$App$ite = F3(
+	function (b, x, y) {
+		return b ? x : y;
+	});
 var _user$project$App$dropDuplicates = function (list) {
 	var step = F2(
 		function (next, _p0) {
@@ -8554,15 +8561,6 @@ var _user$project$App$dropDuplicates = function (list) {
 				},
 				list)));
 };
-var _user$project$App$getClauseList = F2(
-	function (model, ctype) {
-		var _p4 = ctype;
-		if (_p4.ctor === 'OR') {
-			return model.ors;
-		} else {
-			return model.nands;
-		}
-	});
 var _user$project$App$display_term = function (term) {
 	return _elm_lang$core$Native_Utils.eq(term, '') ? 'Ø' : term;
 };
@@ -8571,6 +8569,11 @@ var _user$project$App$onKeyDown = function (tagger) {
 		_elm_lang$html$Html_Events$on,
 		'keydown',
 		A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$keyCode));
+};
+var _user$project$App$clearCurrent = function (model) {
+	return _elm_lang$core$Native_Utils.update(
+		model,
+		{current: ''});
 };
 var _user$project$App$contains_clause = F2(
 	function (s, list) {
@@ -8581,6 +8584,9 @@ var _user$project$App$contains_clause = F2(
 			},
 			list);
 	});
+var _user$project$App$subscriptions = function (model) {
+	return _elm_lang$core$Platform_Sub$none;
+};
 var _user$project$App$init = {
 	ctor: '_Tuple2',
 	_0: {
@@ -8590,9 +8596,6 @@ var _user$project$App$init = {
 		generated: _elm_lang$core$Maybe$Nothing
 	},
 	_1: _elm_lang$core$Platform_Cmd$none
-};
-var _user$project$App$subscriptions = function (model) {
-	return _elm_lang$core$Platform_Sub$none;
 };
 var _user$project$App$Model = F4(
 	function (a, b, c, d) {
@@ -8610,22 +8613,64 @@ var _user$project$App$new_clause = F2(
 		return {term: s, ctype: t, status: _user$project$App$Selectable};
 	});
 var _user$project$App$add_clause_to_list = F3(
-	function (s, t, list) {
-		var term = function (_p5) {
+	function (s, t, model) {
+		var list = A3(
+			_user$project$App$ite,
+			_elm_lang$core$Native_Utils.eq(t, _user$project$App$NAND),
+			model.nands,
+			model.ors);
+		var term = function (_p4) {
 			return _elm_lang$core$String$fromList(
 				_elm_lang$core$List$sort(
 					_user$project$App$dropDuplicates(
-						_elm_lang$core$String$toList(_p5))));
+						_elm_lang$core$String$toList(_p4))));
 		}(s);
-		return A2(_user$project$App$contains_clause, term, list) ? list : A2(
-			_elm_lang$core$Basics_ops['++'],
-			list,
+		return A2(_user$project$App$contains_clause, term, list) ? model : (_elm_lang$core$Native_Utils.eq(t, _user$project$App$NAND) ? _elm_lang$core$Native_Utils.update(
+			model,
 			{
-				ctor: '::',
-				_0: A2(_user$project$App$new_clause, term, t),
-				_1: {ctor: '[]'}
-			});
+				nands: A2(
+					_elm_lang$core$Basics_ops['++'],
+					list,
+					{
+						ctor: '::',
+						_0: A2(_user$project$App$new_clause, term, t),
+						_1: {ctor: '[]'}
+					})
+			}) : _elm_lang$core$Native_Utils.update(
+			model,
+			{
+				ors: A2(
+					_elm_lang$core$Basics_ops['++'],
+					list,
+					{
+						ctor: '::',
+						_0: A2(_user$project$App$new_clause, term, t),
+						_1: {ctor: '[]'}
+					})
+			}));
 	});
+var _user$project$App$unselectAllClauses = function (model) {
+	return _elm_lang$core$Native_Utils.update(
+		model,
+		{
+			nands: A2(
+				_elm_lang$core$List$map,
+				function (c) {
+					return _elm_lang$core$Native_Utils.update(
+						c,
+						{status: _user$project$App$Selectable});
+				},
+				model.nands),
+			ors: A2(
+				_elm_lang$core$List$map,
+				function (c) {
+					return _elm_lang$core$Native_Utils.update(
+						c,
+						{status: _user$project$App$Selectable});
+				},
+				model.ors)
+		});
+};
 var _user$project$App$Selected = {ctor: 'Selected'};
 var _user$project$App$getSelectedNANDs = function (model) {
 	return A2(
@@ -8635,7 +8680,7 @@ var _user$project$App$getSelectedNANDs = function (model) {
 		},
 		model.nands);
 };
-var _user$project$App$getSelectedOr = function (model) {
+var _user$project$App$getSelectedOR = function (model) {
 	return _elm_lang$core$List$head(
 		A2(
 			_elm_lang$core$List$filter,
@@ -8644,76 +8689,161 @@ var _user$project$App$getSelectedOr = function (model) {
 			},
 			model.ors));
 };
-var _user$project$App$statusChangeOnClick = function (status) {
-	var _p6 = status;
-	if (_p6.ctor === 'Selectable') {
-		return _user$project$App$Selected;
+var _user$project$App$updateGenerated = function (model) {
+	var maybe_or_clause = _user$project$App$getSelectedOR(model);
+	var _p5 = maybe_or_clause;
+	if (_p5.ctor === 'Nothing') {
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{generated: _elm_lang$core$Maybe$Nothing});
 	} else {
-		return _user$project$App$Selectable;
+		var nand_clauses = A2(
+			_elm_lang$core$List$map,
+			function (_) {
+				return _.term;
+			},
+			_user$project$App$getSelectedNANDs(model));
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{
+				generated: A2(_user$project$Refutation$step, nand_clauses, _p5._0.term)
+			});
+	}
+};
+var _user$project$App$toggleStatus = function (clause) {
+	var _p6 = clause.status;
+	if (_p6.ctor === 'Selectable') {
+		return _elm_lang$core$Native_Utils.update(
+			clause,
+			{status: _user$project$App$Selected});
+	} else {
+		return _elm_lang$core$Native_Utils.update(
+			clause,
+			{status: _user$project$App$Selectable});
 	}
 };
 var _user$project$App$changeNANDStatus = F2(
-	function (list, t) {
-		var _p7 = list;
-		if (_p7.ctor === '[]') {
-			return {ctor: '[]'};
-		} else {
-			var _p9 = _p7._1;
-			var _p8 = _p7._0;
-			return _elm_lang$core$Native_Utils.eq(_p8.term, t) ? {
-				ctor: '::',
-				_0: _elm_lang$core$Native_Utils.update(
-					_p8,
-					{
-						status: _user$project$App$statusChangeOnClick(_p8.status)
-					}),
-				_1: _p9
-			} : {
-				ctor: '::',
-				_0: _p8,
-				_1: A2(_user$project$App$changeNANDStatus, _p9, t)
-			};
-		}
+	function (t, model) {
+		var updated = A2(
+			_elm_lang$core$List$map,
+			function (n) {
+				return A3(
+					_user$project$App$ite,
+					_elm_lang$core$Native_Utils.eq(n.term, t),
+					_user$project$App$toggleStatus(n),
+					n);
+			},
+			model.nands);
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{nands: updated});
 	});
 var _user$project$App$changeORStatus = F2(
-	function (list, t) {
-		var _p10 = list;
-		if (_p10.ctor === '[]') {
-			return {ctor: '[]'};
-		} else {
-			var _p12 = _p10._1;
-			var _p11 = _p10._0;
-			return _elm_lang$core$Native_Utils.eq(_p11.term, t) ? {
-				ctor: '::',
-				_0: _elm_lang$core$Native_Utils.update(
-					_p11,
-					{
-						status: _user$project$App$statusChangeOnClick(_p11.status)
-					}),
-				_1: A2(_user$project$App$changeORStatus, _p12, t)
-			} : (_elm_lang$core$Native_Utils.eq(_p11.status, _user$project$App$Selected) ? {
-				ctor: '::',
-				_0: _elm_lang$core$Native_Utils.update(
-					_p11,
-					{status: _user$project$App$Selectable}),
-				_1: A2(_user$project$App$changeORStatus, _p12, t)
-			} : {
-				ctor: '::',
-				_0: _p11,
-				_1: A2(_user$project$App$changeORStatus, _p12, t)
-			});
+	function (t, model) {
+		var updated = A2(
+			_elm_lang$core$List$map,
+			function (n) {
+				return A3(
+					_user$project$App$ite,
+					_elm_lang$core$Native_Utils.eq(n.term, t),
+					_user$project$App$toggleStatus(n),
+					_elm_lang$core$Native_Utils.update(
+						n,
+						{status: _user$project$App$Selectable}));
+			},
+			model.ors);
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{ors: updated});
+	});
+var _user$project$App$update = F2(
+	function (msg, model) {
+		var _p7 = msg;
+		switch (_p7.ctor) {
+			case 'GeneratedClicked':
+				var _p8 = model.generated;
+				if (_p8.ctor === 'Nothing') {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				} else {
+					return _user$project$App$addCmd(
+						_user$project$App$updateGenerated(
+							_user$project$App$unselectAllClauses(
+								A3(_user$project$App$add_clause_to_list, _p8._0, _user$project$App$NAND, model))));
+				}
+			case 'ClauseClicked':
+				var _p10 = _p7._0;
+				var _p9 = _p10.ctype;
+				if (_p9.ctor === 'NAND') {
+					return _user$project$App$addCmd(
+						_user$project$App$updateGenerated(
+							A2(_user$project$App$changeNANDStatus, _p10.term, model)));
+				} else {
+					return _user$project$App$addCmd(
+						_user$project$App$updateGenerated(
+							A2(_user$project$App$changeORStatus, _p10.term, model)));
+				}
+			case 'InputChanged':
+				return _user$project$App$addCmd(
+					_elm_lang$core$Native_Utils.update(
+						model,
+						{
+							current: _elm_lang$core$String$toUpper(_p7._0)
+						}));
+			default:
+				if (!_elm_lang$core$Native_Utils.eq(_p7._0, 13)) {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+				} else {
+					if (A2(_elm_lang$core$String$contains, '\\', model.current)) {
+						var term = A2(
+							_elm_lang$core$String$filter,
+							F2(
+								function (x, y) {
+									return !_elm_lang$core$Native_Utils.eq(x, y);
+								})(
+								_elm_lang$core$Native_Utils.chr('\\')),
+							model.current);
+						return {
+							ctor: '_Tuple2',
+							_0: _user$project$App$clearCurrent(
+								A3(_user$project$App$add_clause_to_list, term, _user$project$App$OR, model)),
+							_1: _elm_lang$core$Platform_Cmd$none
+						};
+					} else {
+						return {
+							ctor: '_Tuple2',
+							_0: _user$project$App$clearCurrent(
+								A3(_user$project$App$add_clause_to_list, model.current, _user$project$App$NAND, model)),
+							_1: _elm_lang$core$Platform_Cmd$none
+						};
+					}
+				}
 		}
 	});
 var _user$project$App$GeneratedClicked = {ctor: 'GeneratedClicked'};
 var _user$project$App$display_result_components = F2(
 	function (list, maybe_term) {
-		var _p13 = maybe_term;
-		if (_p13.ctor === 'Nothing') {
+		var _p11 = maybe_term;
+		if (_p11.ctor === 'Nothing') {
 			return {ctor: '[]'};
 		} else {
-			var _p14 = _p13._0;
-			var class_name = A2(_user$project$App$contains_clause, _p14, list) ? 'clause' : 'new_clause clause';
-			return {
+			var _p12 = _p11._0;
+			return A2(_user$project$App$contains_clause, _p12, list) ? {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$p,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$class('clause'),
+						_1: {ctor: '[]'}
+					},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text(
+							_user$project$App$display_term(_p12)),
+						_1: {ctor: '[]'}
+					}),
+				_1: {ctor: '[]'}
+			} : {
 				ctor: '::',
 				_0: A2(
 					_elm_lang$html$Html$p,
@@ -8722,147 +8852,23 @@ var _user$project$App$display_result_components = F2(
 						_0: _elm_lang$html$Html_Events$onClick(_user$project$App$GeneratedClicked),
 						_1: {
 							ctor: '::',
-							_0: _elm_lang$html$Html_Attributes$class(class_name),
+							_0: _elm_lang$html$Html_Attributes$class('new_clause clause'),
 							_1: {ctor: '[]'}
 						}
 					},
 					{
 						ctor: '::',
 						_0: _elm_lang$html$Html$text(
-							_user$project$App$display_term(_p14)),
+							_user$project$App$display_term(_p12)),
 						_1: {ctor: '[]'}
 					}),
 				_1: {ctor: '[]'}
 			};
 		}
 	});
-var _user$project$App$ResolverClicked = {ctor: 'ResolverClicked'};
-var _user$project$App$update = F2(
-	function (msg, model) {
-		update:
-		while (true) {
-			var _p15 = msg;
-			switch (_p15.ctor) {
-				case 'GeneratedClicked':
-					var _p16 = model.generated;
-					if (_p16.ctor === 'Nothing') {
-						return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
-					} else {
-						return {
-							ctor: '_Tuple2',
-							_0: _elm_lang$core$Native_Utils.update(
-								model,
-								{
-									nands: A3(_user$project$App$add_clause_to_list, _p16._0, _user$project$App$NAND, model.nands)
-								}),
-							_1: _elm_lang$core$Platform_Cmd$none
-						};
-					}
-				case 'ResolverClicked':
-					var maybe_or_clause = _user$project$App$getSelectedOr(model);
-					var nand_clauses = A2(
-						_elm_lang$core$List$map,
-						function (n) {
-							return n.term;
-						},
-						_user$project$App$getSelectedNANDs(model));
-					var _p17 = maybe_or_clause;
-					if (_p17.ctor === 'Nothing') {
-						return {
-							ctor: '_Tuple2',
-							_0: _elm_lang$core$Native_Utils.update(
-								model,
-								{generated: _elm_lang$core$Maybe$Nothing}),
-							_1: _elm_lang$core$Platform_Cmd$none
-						};
-					} else {
-						return {
-							ctor: '_Tuple2',
-							_0: _elm_lang$core$Native_Utils.update(
-								model,
-								{
-									generated: A2(_user$project$Refutation$step, nand_clauses, _p17._0.term)
-								}),
-							_1: _elm_lang$core$Platform_Cmd$none
-						};
-					}
-				case 'ClauseClicked':
-					var _p19 = _p15._1;
-					var _p18 = _p15._0;
-					if (_p18.ctor === 'NAND') {
-						var _v10 = _user$project$App$ResolverClicked,
-							_v11 = _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								nands: A2(_user$project$App$changeNANDStatus, model.nands, _p19)
-							});
-						msg = _v10;
-						model = _v11;
-						continue update;
-					} else {
-						var _v12 = _user$project$App$ResolverClicked,
-							_v13 = _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								ors: A2(_user$project$App$changeORStatus, model.ors, _p19)
-							});
-						msg = _v12;
-						model = _v13;
-						continue update;
-					}
-				case 'InputChanged':
-					return {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								current: _elm_lang$core$String$toUpper(_p15._0)
-							}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					};
-				default:
-					if (_elm_lang$core$Native_Utils.eq(_p15._0, 13)) {
-						if (A2(_elm_lang$core$String$contains, '@', model.current)) {
-							var term = A2(
-								_elm_lang$core$String$filter,
-								function (s) {
-									return !_elm_lang$core$Native_Utils.eq(
-										s,
-										_elm_lang$core$Native_Utils.chr('@'));
-								},
-								model.current);
-							return {
-								ctor: '_Tuple2',
-								_0: _elm_lang$core$Native_Utils.update(
-									model,
-									{
-										ors: A3(_user$project$App$add_clause_to_list, term, _user$project$App$OR, model.ors),
-										current: ''
-									}),
-								_1: _elm_lang$core$Platform_Cmd$none
-							};
-						} else {
-							return {
-								ctor: '_Tuple2',
-								_0: _elm_lang$core$Native_Utils.update(
-									model,
-									{
-										nands: A3(_user$project$App$add_clause_to_list, model.current, _user$project$App$NAND, model.nands),
-										current: ''
-									}),
-								_1: _elm_lang$core$Platform_Cmd$none
-							};
-						}
-					} else {
-						return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
-					}
-			}
-		}
-	});
-var _user$project$App$ClauseClicked = F2(
-	function (a, b) {
-		return {ctor: 'ClauseClicked', _0: a, _1: b};
-	});
+var _user$project$App$ClauseClicked = function (a) {
+	return {ctor: 'ClauseClicked', _0: a};
+};
 var _user$project$App$display_list_component = F2(
 	function (list, class_name) {
 		return A2(
@@ -8881,7 +8887,7 @@ var _user$project$App$display_list_component = F2(
 						{
 							ctor: '::',
 							_0: _elm_lang$html$Html_Events$onClick(
-								A2(_user$project$App$ClauseClicked, c.ctype, c.term)),
+								_user$project$App$ClauseClicked(c)),
 							_1: {
 								ctor: '::',
 								_0: _elm_lang$html$Html_Attributes$class(
