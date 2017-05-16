@@ -74,7 +74,7 @@ update msg model =
             in
                 case maybe_or_clause of
                     Nothing ->
-                        ( model, Cmd.none )
+                        ( { model | generated = Nothing }, Cmd.none )
 
                     Just or_clause ->
                         ( { model | generated = Refutation.step nand_clauses or_clause.term }, Cmd.none )
@@ -142,7 +142,7 @@ add_clause_to_list s t list =
         if contains_clause term list then
             list
         else
-            (new_clause term t) :: list
+            list ++ [ (new_clause term t) ]
 
 
 contains_clause : String -> List Clause -> Bool
@@ -164,8 +164,8 @@ view model =
             ]
         , div
             []
-            [ display_list_component model.nands "nand_clauses"
-            , display_list_component model.ors "or_clauses"
+            [ display_list_component model.ors "or_clauses"
+            , display_list_component model.nands "nand_clauses"
             ]
         , div
             [ class "result" ]
@@ -198,8 +198,7 @@ display_result_components list maybe_term =
 display_list_component : List Clause -> String -> Html Msg
 display_list_component list class_name =
     div [ class ("clause_list " ++ class_name) ]
-        [ div [] (List.map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class ("clause " ++ (toString c.status)) ] [ text (display_term c.term) ]) list)
-        ]
+        (List.map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class ("clause " ++ (toString c.status)) ] [ text (display_term c.term) ]) list)
 
 
 display_term : String -> String

@@ -9,16 +9,13 @@ body {
   text-align: center;
 }
 
-.main_section { margin:50px; }
-.main_section div {
-
-}
+.main_section { margin:50px; margin-top:200px; }
 
 .clause_list {
   vertical-align: top;
-  display: inline-block;
-  margin:10px;
-  width:300px;
+  text-align: center;
+  margin:20px auto;
+  width:450px;
 }
 
 .clause_list>h3 {
@@ -26,11 +23,9 @@ body {
 }
 
 .nand_clauses {
-  text-align: right;
   color:#f54;
 }
 .or_clauses {
-  text-align: left;
   color:#5aa;
 }
 
@@ -65,15 +60,13 @@ input:focus {
 .clause:hover { cursor: pointer; }
 
 .nand_clauses .clause { text-decoration: overline; }
+.result .clause { text-decoration:overline; }
 
 .result {
   display: inline-block;
   min-width:450px;
-  padding-top:25px;
-  border-top:2px solid #4a4a4a;
-  margin-top:15px;
 }
 
-.result .clause.new_clause {background-color: #ffd84c; }
-.nand_clauses .clause.Selected { background-color: #ff7a52; }
-.or_clauses .clause.Selected { background-color: #8ecaca; }
+.result .clause.new_clause { background-color:#ffd84c; }
+.nand_clauses .clause.Selected { background-color:#ff7a52; }
+.or_clauses .clause.Selected { background-color:#8ecaca; }

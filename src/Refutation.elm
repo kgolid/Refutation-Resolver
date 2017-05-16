@@ -1,7 +1,7 @@
 module Refutation exposing (step)
 
 import String exposing (toList, fromList, concat, fromChar, contains)
-import List exposing (map, map2, all, concat, filter, concatMap, head, foldl, reverse)
+import List exposing (map, map2, all, concat, filter, concatMap, head, foldl, reverse, sort)
 import Tuple exposing (second)
 import Set exposing (member, insert, empty)
 import Maybe exposing (withDefault)
@@ -44,7 +44,7 @@ alignedStep ncs oc =
         olist =
             toList oc
     in
-        fromList (dropDuplicates (toList (String.concat (map2 removeFromString ncs olist))))
+        (fromList << sort << dropDuplicates << toList << String.concat) (map2 removeFromString ncs olist)
 
 
 removeFromString : String -> Char -> String

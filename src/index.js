@@ -8490,11 +8490,14 @@ var _user$project$Refutation$removeFromString = F2(
 var _user$project$Refutation$alignedStep = F2(
 	function (ncs, oc) {
 		var olist = _elm_lang$core$String$toList(oc);
-		return _elm_lang$core$String$fromList(
-			_user$project$Refutation$dropDuplicates(
-				_elm_lang$core$String$toList(
-					_elm_lang$core$String$concat(
-						A3(_elm_lang$core$List$map2, _user$project$Refutation$removeFromString, ncs, olist)))));
+		return function (_p15) {
+			return _elm_lang$core$String$fromList(
+				_elm_lang$core$List$sort(
+					_user$project$Refutation$dropDuplicates(
+						_elm_lang$core$String$toList(
+							_elm_lang$core$String$concat(_p15)))));
+		}(
+			A3(_elm_lang$core$List$map2, _user$project$Refutation$removeFromString, ncs, olist));
 	});
 var _user$project$Refutation$aligns = F2(
 	function (ncs, oc) {
@@ -8518,12 +8521,12 @@ var _user$project$Refutation$step = F2(
 					return A2(_user$project$Refutation$aligns, perm, oc);
 				},
 				_user$project$Refutation$permutations(ncs)));
-		var _p15 = aligned_nands;
-		if (_p15.ctor === 'Nothing') {
+		var _p16 = aligned_nands;
+		if (_p16.ctor === 'Nothing') {
 			return _elm_lang$core$Maybe$Nothing;
 		} else {
 			return _elm_lang$core$Maybe$Just(
-				A2(_user$project$Refutation$alignedStep, _p15._0, oc));
+				A2(_user$project$Refutation$alignedStep, _p16._0, oc));
 		}
 	});
 
@@ -8614,11 +8617,14 @@ var _user$project$App$add_clause_to_list = F3(
 					_user$project$App$dropDuplicates(
 						_elm_lang$core$String$toList(_p5))));
 		}(s);
-		return A2(_user$project$App$contains_clause, term, list) ? list : {
-			ctor: '::',
-			_0: A2(_user$project$App$new_clause, term, t),
-			_1: list
-		};
+		return A2(_user$project$App$contains_clause, term, list) ? list : A2(
+			_elm_lang$core$Basics_ops['++'],
+			list,
+			{
+				ctor: '::',
+				_0: A2(_user$project$App$new_clause, term, t),
+				_1: {ctor: '[]'}
+			});
 	});
 var _user$project$App$Selected = {ctor: 'Selected'};
 var _user$project$App$getSelectedNANDs = function (model) {
@@ -8762,7 +8768,13 @@ var _user$project$App$update = F2(
 						_user$project$App$getSelectedNANDs(model));
 					var _p17 = maybe_or_clause;
 					if (_p17.ctor === 'Nothing') {
-						return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+						return {
+							ctor: '_Tuple2',
+							_0: _elm_lang$core$Native_Utils.update(
+								model,
+								{generated: _elm_lang$core$Maybe$Nothing}),
+							_1: _elm_lang$core$Platform_Cmd$none
+						};
 					} else {
 						return {
 							ctor: '_Tuple2',
@@ -8861,40 +8873,33 @@ var _user$project$App$display_list_component = F2(
 					A2(_elm_lang$core$Basics_ops['++'], 'clause_list ', class_name)),
 				_1: {ctor: '[]'}
 			},
-			{
-				ctor: '::',
-				_0: A2(
-					_elm_lang$html$Html$div,
-					{ctor: '[]'},
-					A2(
-						_elm_lang$core$List$map,
-						function (c) {
-							return A2(
-								_elm_lang$html$Html$p,
-								{
-									ctor: '::',
-									_0: _elm_lang$html$Html_Events$onClick(
-										A2(_user$project$App$ClauseClicked, c.ctype, c.term)),
-									_1: {
-										ctor: '::',
-										_0: _elm_lang$html$Html_Attributes$class(
-											A2(
-												_elm_lang$core$Basics_ops['++'],
-												'clause ',
-												_elm_lang$core$Basics$toString(c.status))),
-										_1: {ctor: '[]'}
-									}
-								},
-								{
-									ctor: '::',
-									_0: _elm_lang$html$Html$text(
-										_user$project$App$display_term(c.term)),
-									_1: {ctor: '[]'}
-								});
+			A2(
+				_elm_lang$core$List$map,
+				function (c) {
+					return A2(
+						_elm_lang$html$Html$p,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Events$onClick(
+								A2(_user$project$App$ClauseClicked, c.ctype, c.term)),
+							_1: {
+								ctor: '::',
+								_0: _elm_lang$html$Html_Attributes$class(
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										'clause ',
+										_elm_lang$core$Basics$toString(c.status))),
+								_1: {ctor: '[]'}
+							}
 						},
-						list)),
-				_1: {ctor: '[]'}
-			});
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html$text(
+								_user$project$App$display_term(c.term)),
+							_1: {ctor: '[]'}
+						});
+				},
+				list));
 	});
 var _user$project$App$InputChanged = function (a) {
 	return {ctor: 'InputChanged', _0: a};
@@ -8942,10 +8947,10 @@ var _user$project$App$view = function (model) {
 					{ctor: '[]'},
 					{
 						ctor: '::',
-						_0: A2(_user$project$App$display_list_component, model.nands, 'nand_clauses'),
+						_0: A2(_user$project$App$display_list_component, model.ors, 'or_clauses'),
 						_1: {
 							ctor: '::',
-							_0: A2(_user$project$App$display_list_component, model.ors, 'or_clauses'),
+							_0: A2(_user$project$App$display_list_component, model.nands, 'nand_clauses'),
 							_1: {ctor: '[]'}
 						}
 					}),
