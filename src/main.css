@@ -3,14 +3,15 @@
 }
 
 body {
-  background-color: #e0e0e0;
+  background-color: #ecebe4;
   font-family: sans-serif;
   font-weight:100;
   text-align: center;
 }
 
-.main_section {
-  margin:50px;
+.main_section { margin:50px; }
+.main_section div {
+
 }
 
 .clause_list {
@@ -33,35 +34,46 @@ body {
   color:#5aa;
 }
 
-input {
-  border:none;
-  padding:15px;
-  margin:5px;
-  width:200px;
-  font-size: 12pt;
+input, button {
+  border-radius: 55px;
+  border: 2px solid #4a4a4a;
+  color: #4a4a4a;
+  padding: 15px 25px;
+  margin: 5px;
+  width: 200px;
+  font-size: 11pt;
   text-align: center;
+  background: none;
 }
 
 input:focus {
   outline: none;
 }
 
-.clause_list div p {
-  margin:4px;
-  padding:15px 20px;
+.clause {
+  margin: 4px;
+  padding: 10px 20px;
   display: inline-block;
-  color:#fff;
-  font-size: 9pt;
+  border-radius: 50px;
+  border: 2px solid #4a4a4a;
+  color: #4a4a4a;
+  font-size: 10pt;
   font-weight: 300;
+  letter-spacing:.1em;
 }
 
-.clause_list div p:hover {
-  cursor: pointer;
+.clause:hover { cursor: pointer; }
+
+.nand_clauses .clause { text-decoration: overline; }
+
+.result {
+  display: inline-block;
+  min-width:450px;
+  padding-top:25px;
+  border-top:2px solid #4a4a4a;
+  margin-top:15px;
 }
 
-.clause_list.nand_clauses div p.Unselectable { background-color: #aaa; }
-.clause_list.or_clauses div p.Unselectable { background-color: #aaa; }
-.clause_list.nand_clauses div p.Selectable { background-color: #f87; }
-.clause_list.or_clauses div p.Selectable { background-color: #9cc; }
-.clause_list.nand_clauses div p.Selected { background-color: #f54; }
-.clause_list.or_clauses div p.Selected { background-color: #5aa; }
+.result .clause.new_clause {background-color: #ffd84c; }
+.nand_clauses .clause.Selected { background-color: #ff7a52; }
+.or_clauses .clause.Selected { background-color: #8ecaca; }

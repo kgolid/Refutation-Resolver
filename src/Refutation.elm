@@ -1,7 +1,9 @@
-module Refutation exposing (..)
+module Refutation exposing (step)
 
 import String exposing (toList, fromList, concat, fromChar, contains)
-import List exposing (map, map2, all, concat, filter, concatMap, head)
+import List exposing (map, map2, all, concat, filter, concatMap, head, foldl, reverse)
+import Tuple exposing (second)
+import Set exposing (member, insert, empty)
 import Maybe exposing (withDefault)
 
 
@@ -13,9 +15,18 @@ type alias OR =
     String
 
 
-step : List NAND -> OR -> NAND
+step : List NAND -> OR -> Maybe NAND
 step ncs oc =
-    alignedStep (withDefault [] (head (filter (\perm -> aligns perm oc) (permutations ncs)))) oc
+    let
+        aligned_nands =
+            head (filter (\perm -> aligns perm oc) (permutations ncs))
+    in
+        case aligned_nands of
+            Nothing ->
+                Nothing
+
+            Just nands ->
+                Just (alignedStep nands oc)
 
 
 aligns : List NAND -> OR -> Bool
@@ -24,7 +35,7 @@ aligns ncs oc =
         olist =
             map fromChar (toList oc)
     in
-        all identity (map2 contains olist ncs)
+        List.length olist == List.length ncs && all identity (map2 contains olist ncs)
 
 
 alignedStep : List NAND -> OR -> NAND
@@ -33,7 +44,7 @@ alignedStep ncs oc =
         olist =
             toList oc
     in
-        String.concat (map2 removeFromString ncs olist)
+        fromList (dropDuplicates (toList (String.concat (map2 removeFromString ncs olist))))
 
 
 removeFromString : String -> Char -> String
@@ -55,8 +66,8 @@ removeFromList list c =
 
 
 permutations : List a -> List (List a)
-permutations xs' =
-    case xs' of
+permutations xss =
+    case xss of
         [] ->
             [ [] ]
 
@@ -76,3 +87,15 @@ select xs =
 
         x :: xs ->
             ( x, xs ) :: map (\( y, ys ) -> ( y, x :: ys )) (select xs)
+
+
+dropDuplicates : List comparable -> List comparable
+dropDuplicates list =
+    let
+        step next ( set, acc ) =
+            if Set.member next set then
+                ( set, acc )
+            else
+                ( Set.insert next set, next :: acc )
+    in
+        List.foldl step ( Set.empty, [] ) list |> second |> List.reverse

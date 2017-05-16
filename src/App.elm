@@ -8,6 +8,7 @@ import Debug exposing (log)
 import List exposing (append, map, filter, concat, any, sort, head)
 import String exposing (contains, filter, toUpper, toList, fromList)
 import Set exposing (member, insert, empty)
+import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
 import Json.Decode as Json
 
@@ -16,7 +17,7 @@ type alias Model =
     { nands : List Clause
     , ors : List Clause
     , current : String
-    , generated : String
+    , generated : Maybe String
     }
 
 
@@ -35,7 +36,6 @@ type ClauseType
 type ClauseStatus
     = Selected
     | Selectable
-    | Unselectable
 
 
 type Msg
@@ -43,6 +43,7 @@ type Msg
     | InputChanged String
     | ClauseClicked ClauseType String
     | ResolverClicked
+    | GeneratedClicked
 
 
 subscriptions : Model -> Sub Msg
@@ -53,10 +54,20 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd a )
 update msg model =
     case msg of
+        GeneratedClicked ->
+            case model.generated of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just generated ->
+                    ( { model | nands = add_clause_to_list generated NAND model.nands }
+                    , Cmd.none
+                    )
+
         ResolverClicked ->
             let
                 nand_clauses =
-                    map (\n -> n.term) (getSelectedNANDs model)
+                    List.map (\n -> n.term) (getSelectedNANDs model)
 
                 maybe_or_clause =
                     getSelectedOr model
@@ -71,10 +82,10 @@ update msg model =
         ClauseClicked ctype term ->
             case ctype of
                 NAND ->
-                    ( { model | nands = changeStatus model.nands term }, Cmd.none )
+                    { model | nands = changeNANDStatus model.nands term } |> update ResolverClicked
 
                 OR ->
-                    ( { model | ors = changeStatus model.ors term }, Cmd.none )
+                    { model | ors = changeORStatus model.ors term } |> update ResolverClicked
 
         InputChanged name ->
             ( { model | current = toUpper name }, Cmd.none )
@@ -108,7 +119,7 @@ init =
     ( { nands = []
       , ors = []
       , current = ""
-      , generated = ""
+      , generated = Nothing
       }
     , Cmd.none
     )
@@ -147,21 +158,18 @@ view model =
             [ input
                 [ onInput InputChanged
                 , onKeyDown KeyDown
-                , placeholder "Enter axioms here"
                 , value model.current
                 ]
                 []
             ]
         , div
             []
-            [ display_list_component model.nands "NANDs" "nand_clauses"
-            , display_list_component model.ors "ORs" "or_clauses"
+            [ display_list_component model.nands "nand_clauses"
+            , display_list_component model.ors "or_clauses"
             ]
         , div
-            []
-            [ button [ onClick ResolverClicked ] [ text "Resolve!" ]
-            , p [] [ text model.generated ]
-            ]
+            [ class "result" ]
+            (display_result_components model.nands model.generated)
         ]
 
 
@@ -170,12 +178,36 @@ onKeyDown tagger =
     on "keydown" (Json.map tagger keyCode)
 
 
-display_list_component : List Clause -> String -> String -> Html Msg
-display_list_component list title class_name =
+display_result_components : List Clause -> Maybe String -> List (Html Msg)
+display_result_components list maybe_term =
+    case maybe_term of
+        Nothing ->
+            []
+
+        Just term ->
+            let
+                class_name =
+                    if contains_clause term list then
+                        "clause"
+                    else
+                        "new_clause clause"
+            in
+                [ p [ onClick (GeneratedClicked), class class_name ] [ text (display_term term) ] ]
+
+
+display_list_component : List Clause -> String -> Html Msg
+display_list_component list class_name =
     div [ class ("clause_list " ++ class_name) ]
-        [ h3 [] [ text title ]
-        , div [] (map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class (toString c.status) ] [ text c.term ]) list)
+        [ div [] (List.map (\c -> p [ onClick (ClauseClicked c.ctype c.term), class ("clause " ++ (toString c.status)) ] [ text (display_term c.term) ]) list)
         ]
+
+
+display_term : String -> String
+display_term term =
+    if term == "" then
+        "Ø"
+    else
+        term
 
 
 
@@ -202,8 +234,8 @@ getClauseList model ctype =
             model.nands
 
 
-changeStatus : List Clause -> String -> List Clause
-changeStatus list t =
+changeNANDStatus : List Clause -> String -> List Clause
+changeNANDStatus list t =
     case list of
         [] ->
             []
@@ -212,15 +244,27 @@ changeStatus list t =
             if (x.term == t) then
                 { x | status = statusChangeOnClick x.status } :: xs
             else
-                x :: (changeStatus xs t)
+                x :: (changeNANDStatus xs t)
+
+
+changeORStatus : List Clause -> String -> List Clause
+changeORStatus list t =
+    case list of
+        [] ->
+            []
+
+        x :: xs ->
+            if (x.term == t) then
+                { x | status = statusChangeOnClick x.status } :: (changeORStatus xs t)
+            else if (x.status == Selected) then
+                { x | status = Selectable } :: (changeORStatus xs t)
+            else
+                x :: (changeORStatus xs t)
 
 
 statusChangeOnClick : ClauseStatus -> ClauseStatus
 statusChangeOnClick status =
     case status of
-        Unselectable ->
-            Unselectable
-
         Selectable ->
             Selected
 
@@ -237,4 +281,4 @@ dropDuplicates list =
             else
                 ( Set.insert next set, next :: acc )
     in
-        List.foldl step ( Set.empty, [] ) list |> snd |> List.reverse
+        List.foldl step ( Set.empty, [] ) list |> second |> List.reverse
